@@ -1,7 +1,3 @@
-// Custom DatabaseService for managing a MySQL connection pool in NestJS.
-// - Loads DB config from environment variables using dotenv.
-// - Implements OnModuleInit/OnModuleDestroy for lifecycle management.
-// - Provides a getPool() method for dependency injection in other services.
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import * as mysql from 'mysql2/promise';
 import * as dotenv from 'dotenv';
@@ -10,32 +6,50 @@ dotenv.config();
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
-    pool!: mysql.Pool;
+  private pool!: mysql.Pool;
 
-    async onModuleInit() {
-        this.pool = mysql.createPool({
-            host: process.env.DB_HOST || 'mysql-3b854787-ncf-7115.d.avncloud.com',
-            port: Number(process.env.DB_PORT) || 28615,
-            user: process.env.DB_USER || 'avnadmin',
-            password: process.env.DB_PASSWORD || 'UseYourGivenDBPassword',
-            database: process.env.DB_NAME || 'defaultdb',
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0,
-        });
+  async onModuleInit() {
+    this.pool = mysql.createPool({
+      host: process.env.DB_HOST || 'mysql-3b854787-ncf-7115.d.avncloud.com',
+      port: Number(process.env.DB_PORT) || 28615,
+      user: process.env.DB_USER || 'avnadmin',
+      password: process.env.DB_PASSWORD || 'UseYourGivenDBPassword',
+      database: process.env.DB_NAME || 'defaultdb',
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    });
 
-        // optional: test connection
-        const conn = await this.pool.getConnection();
-        await conn.ping();
-        conn.release();
-        console.log('MySQL pool created');
+    try {
+      const conn = await this.pool.getConnection();
+      await conn.ping();
+      conn.release();
+      console.log('✅ MySQL pool connected successfully');
+    } catch (error) {
+      console.error('❌ MySQL connection failed:', error);
+      throw error;
     }
+  }
 
-    async onModuleDestroy() {
-        await this.pool.end();
+  getPool(): mysql.Pool {
+    if (!this.pool) {
+      throw new Error('❌ MySQL pool not initialized yet');
     }
+    return this.pool;
+  }
 
-    getPool() {
-        return this.pool;
-    }
+  async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+    const [rows] = await this.pool.query(sql, params);
+    return rows as T[];
+  }
+
+  async execute<T = any>(sql: string, params?: any[]): Promise<T> {
+    const [result] = await this.pool.execute(sql, params);
+    return result as T;
+  }
+
+  async onModuleDestroy() {
+    await this.pool.end();
+    console.log('🛑 MySQL pool closed');
+  }
 }
