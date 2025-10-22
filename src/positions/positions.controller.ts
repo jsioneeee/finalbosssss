@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Param, Body, Put, Delete } from '@nestjs/common';
-import { PositionsService } from './position.service';
+import { PositionsService } from './positions.service';
 
 @Controller('positions')
 export class PositionsController {
@@ -24,14 +24,16 @@ export class PositionsController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateData: any) {
+  async update(@Param('id') id: string, @Body() updateData: any) {
     console.log(`PUT /positions/${id} triggered`, updateData);
-    return this.positionsService.update(+id, updateData);
+    await this.positionsService.update(+id, updateData);
+    return { message: 'Position updated successfully' };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     console.log(`DELETE /positions/${id} triggered`);
-    return this.positionsService.remove(+id);
+    await this.positionsService.remove(+id);
+    return { message: 'Position deleted successfully' };
   }
-}
+} 
