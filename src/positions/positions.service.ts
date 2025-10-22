@@ -5,110 +5,89 @@ export interface Position {
   position_id: number;
   position_code: string;
   position_name: string;
-  id: string;               // short string version of position_id
-  created_at: string;       // ISO timestamp
-  updated_at: string;       // ISO timestamp
+  id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 @Injectable()
 export class PositionsService {
-  private positions: Position[] = [];
+  constructor(private readonly db: DatabaseService) {}
 
   // GET all positions
-  findAll(): Partial<Position>[] {
-    return this.positions.map((pos) => ({
-      position_id: pos.position_id,
-      position_code: pos.position_code,
-      position_name: pos.position_name,
-      id: pos.id,
-      created_at: pos.created_at,
-      updated_at: pos.updated_at
-    }));
+  async findAll(): Promise<Position[]> {
+    const query = 'SELECT * FROM positions';
+    return this.db.query(query);
   }
 
   // GET one position by ID
-  findOne(position_id: number): Partial<Position> | undefined {
-    const pos = this.positions.find((p) => p.position_id === position_id);
-    if (!pos) return undefined;
-
-    return {
-      position_id: pos.position_id,
-      position_code: pos.position_code,
-      position_name: pos.position_name,
-      id: pos.id,
-      created_at: pos.created_at,
-      updated_at: pos.updated_at
-    };
+  async findOne(position_id: number): Promise<Position | null> {
+    const query = 'SELECT * FROM positions WHERE position_id = ?';
+    const results = await this.db.query(query, [position_id]);
+    return results.length > 0 ? results[0] : null;
   }
 
   // POST new position
-  create(data: Omit<Position, 'position_id' | 'id' | 'created_at' | 'updated_at'>): Partial<Position> {
-    const newId = this.positions.length > 0
-      ? this.positions[this.positions.length - 1].position_id + 1
-      : 1;
+  async create(data: {
+    position_code: string;
+    position_name: string;
+  }): Promise<Partial<Position>> {
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' '); // MySQL-compatible format
 
-    const now = new Date().toISOString();
+    const last = await this.db.query('SELECT MAX(position_id) as max FROM positions');
+    const newId = last[0]?.max ? last[0].max + 1 : 1;
 
-    const newPosition: Position = {
+    const query = `
+      INSERT INTO positions (position_id, position_code, position_name, id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    await this.db.query(query, [
+      newId,
+      data.position_code,
+      data.position_name,
+      newId.toString(), // auto-generated string version of position_id
+      now,
+      now,
+    ]);
+
+    return {
       position_id: newId,
       position_code: data.position_code,
       position_name: data.position_name,
-      id: newId.toString(), // short string like "9"
-      created_at: now,
-      updated_at: now
-    };
-
-    this.positions.push(newPosition);
-
-    // POST response format
-    return {
-      position_id: newPosition.position_id,
-      position_code: newPosition.position_code,
-      position_name: newPosition.position_name,
-      id: newPosition.id
+      id: newId.toString(),
     };
   }
 
-  // PUT/PATCH update position
-  update(position_id: number, updateData: Partial<Position>): Partial<Position> | null {
-    const index = this.positions.findIndex((pos) => pos.position_id === position_id);
-    if (index === -1) return null;
+  // PUT update position
+  async update(position_id: number, updateData: {
+    position_code?: string;
+    position_name?: string;
+  }): Promise<Position | null> {
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-    this.positions[index] = {
-      ...this.positions[index],
-      ...updateData,
-      updated_at: new Date().toISOString()
-    };
+    const query = `
+      UPDATE positions
+      SET position_code = ?, position_name = ?, updated_at = ?
+      WHERE position_id = ?
+    `;
+    await this.db.query(query, [
+      updateData.position_code,
+      updateData.position_name,
+      now,
+      position_id,
+    ]);
 
-    const updated = this.positions[index];
-    return {
-      position_id: updated.position_id,
-      position_code: updated.position_code,
-      position_name: updated.position_name,
-      id: updated.id,
-      created_at: updated.created_at,
-      updated_at: updated.updated_at
-    };
+    return this.findOne(position_id);
   }
 
   // DELETE position
-  remove(position_id: number): Partial<Position> | null {
-    const index = this.positions.findIndex((pos) => pos.position_id === position_id);
-    if (index === -1) return null;
+  async remove(position_id: number): Promise<Position | null> {
+    const existing = await this.findOne(position_id);
+    if (!existing) return null;
 
-    const removed = this.positions.splice(index, 1)[0];
-    return {
-      position_id: removed.position_id,
-      position_code: removed.position_code,
-      position_name: removed.position_name,
-      id: removed.id,
-      created_at: removed.created_at,
-      updated_at: removed.updated_at
-    };
-  }
+    const query = 'DELETE FROM positions WHERE position_id = ?';
+    await this.db.query(query, [position_id]);
 
-  // Optional: reset all positions
-  reset(): void {
-    this.positions = [];
+    return existing;
   }
 }
