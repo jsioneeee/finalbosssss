@@ -47,12 +47,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT || 15847;
 
-  // ✅ Fixed CORS: allow localhost, local IP, and Vercel
+  // ✅ CORS config for localhost, local IP, and Vercel
   app.enableCors({
     origin: [
-      "http://localhost:3000",             // local dev
-      "http://192.168.56.1:3000",          // local IP (your browser origin)
-      "https://login-4ywc.vercel.app"      // deployed frontend
+      "http://localhost:3000",
+      "http://192.168.56.1:3000",
+      "https://login-4ywc.vercel.app"
     ],
     credentials: true,
   });
