@@ -150,7 +150,7 @@ export class UsersController {
     return this.usersService.deleteUser(+id);
   }
 
-  // ✅ Self-update route with JSON response
+  // ✅ Self-update route
   @UseGuards(JwtAuthGuard)
   @Put('me')
   async updateMe(
@@ -159,6 +159,15 @@ export class UsersController {
   ) {
     const userId = req.user.userId;
     const updated = await this.usersService.updateUser(userId, body);
-    return { success: true, user: updated }; // ✅ Return JSON to avoid frontend error
+    return { success: true, user: updated };
+  }
+
+  // ✅ Optional: fetch current user info
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@Request() req: any) {
+    const userId = req.user.userId;
+    const user = await this.usersService.findById(userId);
+    return { username: user.username };
   }
 }
