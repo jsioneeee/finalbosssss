@@ -52,7 +52,7 @@ async function bootstrap() {
     origin: [
       "http://localhost:3000",
       "http://192.168.56.1:3000",
-      "https://login-yp6n.vercel.app"
+      "https://login-jy9j.vercel.app"
     ],
     credentials: true,
   });
